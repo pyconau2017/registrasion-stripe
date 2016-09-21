@@ -1,6 +1,4 @@
-from functools import partial
-
-
+import copy
 
 from django import forms
 from django.core.urlresolvers import reverse
@@ -19,40 +17,47 @@ class NoRenderWidget(forms.widgets.HiddenInput):
         return "<!-- no widget: " + name + " -->"
 
 
-def secure_striped(widget):
+def secure_striped(field):
     ''' Calls stripe() with secure=True. '''
-    return striped(widget, True)
+    return striped(field, True)
 
 
-def striped(WidgetClass, secure=False):
-    ''' Takes a given widget and overrides the render method to be suitable
-    for stripe.js.
+def striped(field, secure=False):
 
-    Arguments:
-        widget: The widget class
+    oldwidget = field.widget
+    field.widget = StripeWidgetProxy(oldwidget, secure)
+    return field
 
-        secure: if True, only the `data-stripe` attribute will be set. Name
-            will be set to None.
 
-    '''
+class StripeWidgetProxy(widgets.Widget):
 
-    class StripedWidget(WidgetClass):
+    def __init__(self, underlying, secure=False):
+        self.underlying = underlying
+        self.secure = secure
 
-        def render(self, name, value, attrs=None):
+    def __deepcopy__(self, memo):
+        copy_underlying = copy.deepcopy(self.underlying, memo)
+        return type(self)(copy_underlying)
 
-            if not attrs:
-                attrs = {}
+    def __getattribute__(self, attr):
+        spr = super(StripeWidgetProxy, self).__getattribute__
+        if attr in ("underlying", "render", "secure", "__deepcopy__"):
+            return spr(attr)
+        else:
+            return getattr(self.underlying, attr)
 
-            attrs["data-stripe"] = name
+    def render(self, name, value, attrs=None):
 
-            if secure:
-                name = ""
+        print "RENDER: " + name
+        if not attrs:
+            attrs = {}
 
-            return super(StripedWidget, self).render(
-                name, value, attrs=attrs
-            )
+        attrs["data-stripe"] = name
 
-    return StripedWidget
+        if self.secure:
+            name = ""
+
+        return self.underlying.render(name, value, attrs=attrs)
 
 
 class CreditCardForm(forms.Form):
@@ -67,33 +72,29 @@ class CreditCardForm(forms.Form):
 
     media = property(_media)
 
-    number = forms.CharField(
+    number = secure_striped(forms.CharField(
         required=False,
         label="Credit card Number",
         help_text="Your credit card number, with or without spaces.",
         max_length=255,
-        widget=secure_striped(widgets.TextInput)(),
-    )
-    exp_month = forms.IntegerField(
+    ))
+    exp_month = secure_striped(forms.IntegerField(
         required=False,
         label="Card expiry month",
         min_value=1,
         max_value=12,
-        widget=secure_striped(widgets.TextInput)(),
-    )
-    exp_year = forms.IntegerField(
+    ))
+    exp_year = secure_striped(forms.IntegerField(
         required=False,
         label="Card expiry year",
         help_text="The expiry year for your card in 4-digit form",
         min_value=lambda: timezone.now().year,
-        widget=secure_striped(widgets.TextInput)(),
-    )
-    cvc = forms.CharField(
+    ))
+    cvc = secure_striped(forms.CharField(
         required=False,
         min_length=3,
         max_length=4,
-        widget=secure_striped(widgets.TextInput)(),
-    )
+    ))
 
     stripe_token = forms.CharField(
         max_length=255,
@@ -101,48 +102,42 @@ class CreditCardForm(forms.Form):
         widget=NoRenderWidget(),
     )
 
-    name = forms.CharField(
+    name = striped(forms.CharField(
         required=True,
         label="Cardholder name",
         help_text="The cardholder's name, as it appears on the credit card",
         max_length=255,
-        widget=striped(widgets.TextInput),
-    )
-    address_line1 = forms.CharField(
+    ))
+    address_line1 = striped(forms.CharField(
         required=True,
         label="Cardholder account address, line 1",
         max_length=255,
-        widget=striped(widgets.TextInput),
-    )
-    address_line2 = forms.CharField(
+    ))
+    address_line2 = striped(forms.CharField(
         required=False,
         label="Cardholder account address, line 2",
         max_length=255,
-        widget=striped(widgets.TextInput),
-    )
-    address_city = forms.CharField(
+    ))
+    address_city = striped(forms.CharField(
         required=True,
         label="Cardholder account city",
         max_length=255,
-        widget=striped(widgets.TextInput),
-    )
-    address_state = forms.CharField(
+    ))
+    address_state = striped(forms.CharField(
         required=True,
         max_length=255,
         label="Cardholder account state or province",
-        widget=striped(widgets.TextInput),
-    )
-    address_zip = forms.CharField(
+    ))
+    address_zip = striped(forms.CharField(
         required=True,
         max_length=255,
         label="Cardholder account postal code",
-        widget=striped(widgets.TextInput),
-    )
-    address_country = LazyTypedChoiceField(
+    ))
+    address_country = striped(LazyTypedChoiceField(
         label="Cardholder account country",
         choices=countries,
-        widget=striped(CountrySelectWidget),
-    )
+        widget=CountrySelectWidget,
+    ))
 
 
 '''{
