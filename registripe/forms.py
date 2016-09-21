@@ -1,9 +1,12 @@
 from functools import partial
 
+
+
 from django import forms
 from django.core.urlresolvers import reverse
 from django.core.exceptions import ValidationError
 from django.forms import widgets
+from django.utils import timezone
 
 from django_countries import countries
 from django_countries.fields import LazyTypedChoiceField
@@ -66,21 +69,28 @@ class CreditCardForm(forms.Form):
 
     number = forms.CharField(
         required=False,
+        label="Credit card Number",
+        help_text="Your credit card number, with or without spaces.",
         max_length=255,
         widget=secure_striped(widgets.TextInput)(),
     )
-    exp_month = forms.CharField(
+    exp_month = forms.IntegerField(
         required=False,
-        max_length=2,
+        label="Card expiry month",
+        min_value=1,
+        max_value=12,
         widget=secure_striped(widgets.TextInput)(),
     )
-    exp_year = forms.CharField(
+    exp_year = forms.IntegerField(
         required=False,
-        max_length=4,
+        label="Card expiry year",
+        help_text="The expiry year for your card in 4-digit form",
+        min_value=lambda: timezone.now().year,
         widget=secure_striped(widgets.TextInput)(),
     )
     cvc = forms.CharField(
         required=False,
+        min_length=3,
         max_length=4,
         widget=secure_striped(widgets.TextInput)(),
     )
@@ -93,34 +103,43 @@ class CreditCardForm(forms.Form):
 
     name = forms.CharField(
         required=True,
+        label="Cardholder name",
+        help_text="The cardholder's name, as it appears on the credit card",
         max_length=255,
         widget=striped(widgets.TextInput),
     )
     address_line1 = forms.CharField(
         required=True,
+        label="Cardholder account address, line 1",
         max_length=255,
         widget=striped(widgets.TextInput),
     )
     address_line2 = forms.CharField(
         required=False,
+        label="Cardholder account address, line 2",
         max_length=255,
         widget=striped(widgets.TextInput),
     )
     address_city = forms.CharField(
         required=True,
+        label="Cardholder account city",
         max_length=255,
         widget=striped(widgets.TextInput),
     )
     address_state = forms.CharField(
-        required=True, max_length=255,
+        required=True,
+        max_length=255,
+        label="Cardholder account state or province",
         widget=striped(widgets.TextInput),
     )
     address_zip = forms.CharField(
         required=True,
         max_length=255,
+        label="Cardholder account postal code",
         widget=striped(widgets.TextInput),
     )
     address_country = LazyTypedChoiceField(
+        label="Cardholder account country",
         choices=countries,
         widget=striped(CountrySelectWidget),
     )
