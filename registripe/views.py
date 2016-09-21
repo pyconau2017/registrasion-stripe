@@ -30,6 +30,13 @@ def pubkey_script(request):
 
 
 def card(request, invoice_id):
+    ''' View that shows and processes a Stripe CreditCardForm to pay the given
+    invoice. Redirects back to the invoice once the invoice is fully paid.
+
+    Arguments:
+        invoice_id (castable to str): The invoice id for the invoice to pay.
+
+    '''
 
     form = forms.CreditCardForm(request.POST or None)
 
@@ -39,6 +46,9 @@ def card(request, invoice_id):
         raise Http404()
 
     to_invoice = redirect("invoice", inv.invoice.id)
+
+    if inv.invoice.balance_due() <= 0:
+        return to_invoice
 
     if request.POST and form.is_valid():
         try:
