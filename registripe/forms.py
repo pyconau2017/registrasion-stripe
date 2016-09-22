@@ -1,14 +1,18 @@
 import copy
+import models
 
 from django import forms
 from django.core.urlresolvers import reverse
 from django.core.exceptions import ValidationError
+from django.db.models import F, Q
 from django.forms import widgets
 from django.utils import timezone
 
 from django_countries import countries
 from django_countries.fields import LazyTypedChoiceField
 from django_countries.widgets import CountrySelectWidget
+
+from pinax.stripe import models as pinax_stripe_models
 
 
 class NoRenderWidget(forms.widgets.HiddenInput):
@@ -138,6 +142,53 @@ class CreditCardForm(forms.Form):
         choices=countries,
         widget=CountrySelectWidget,
     ))
+
+
+class StripeRefundForm(forms.Form):
+
+    def __init__(self, *args, **kwargs):
+        '''
+
+        Arguments:
+            user (User): The user whose charges we should filter to.
+            min_value (Decimal): The minimum value of the charges we should
+                show (currently, credit notes can only be cashed out in full.)
+
+        '''
+        user = kwargs.pop('user', None)
+        min_value = kwargs.pop('min_value', None)
+        super(StripeRefundForm, self).__init__(*args, **kwargs)
+
+        payment_field = self.fields['payment']
+        qs = payment_field.queryset
+
+        if user:
+            qs = qs.filter(
+                charge__customer__user=user,
+            )
+
+        if min_value is not None:
+            # amount >= amount_to_refund + amount_refunded
+            # No refunds yet
+            q1 = (
+                Q(charge__amount_refunded__isnull=True) &
+                Q(charge__amount__gte=min_value)
+            )
+            # There are some refunds
+            q2 = (
+                Q(charge__amount_refunded__isnull=False) &
+                Q(charge__amount__gte=(
+                    F("charge__amount_refunded") + min_value)
+                )
+            )
+            qs = qs.filter(q1 | q2)
+
+        payment_field.queryset = qs
+
+    payment = forms.ModelChoiceField(
+        required=True,
+        queryset=models.StripePayment.objects.all(),
+    )
 
 
 '''{
