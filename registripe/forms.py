@@ -41,7 +41,7 @@ class StripeWidgetProxy(widgets.Widget):
 
     def __deepcopy__(self, memo):
         copy_underlying = copy.deepcopy(self.underlying, memo)
-        return type(self)(copy_underlying)
+        return type(self)(copy_underlying, self.secure)
 
     def __getattribute__(self, attr):
         spr = super(StripeWidgetProxy, self).__getattribute__
@@ -52,7 +52,6 @@ class StripeWidgetProxy(widgets.Widget):
 
     def render(self, name, value, attrs=None):
 
-        print "RENDER: " + name
         if not attrs:
             attrs = {}
 
