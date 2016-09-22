@@ -105,32 +105,26 @@ def process_card(request, form, inv):
         conference.title, inv.invoice.id
     )
 
-    try:
-        charge = actions.charges.create(
-            amount_to_pay,
-            customer,
-            currency=CURRENCY,
-            description=description,
-            capture=False,
-        )
+    charge = actions.charges.create(
+        amount_to_pay,
+        customer,
+        currency=CURRENCY,
+        description=description,
+        capture=True,
+    )
 
-        receipt = charge.stripe_charge.receipt_number
-        if not receipt:
-            receipt = charge.stripe_charge.id
-        reference = "Paid with Stripe receipt number: " + receipt
+    receipt = charge.stripe_charge.receipt_number
+    if not receipt:
+        receipt = charge.stripe_charge.id
+    reference = "Paid with Stripe receipt number: " + receipt
 
-        # Create the payment object
-        models.StripePayment.objects.create(
-            invoice=inv.invoice,
-            reference=reference,
-            amount=charge.amount,
-            charge=charge,
-        )
-    except StripeError as e:
-        raise e
-    finally:
-        # Do not actually charge the account until we've reconciled locally.
-        actions.charges.capture(charge)
+    # Create the payment object
+    models.StripePayment.objects.create(
+        invoice=inv.invoice,
+        reference=reference,
+        amount=charge.amount,
+        charge=charge,
+    )
 
     inv.update_status()
 
