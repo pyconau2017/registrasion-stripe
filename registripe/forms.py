@@ -92,7 +92,7 @@ class CreditCardForm(forms.Form):
         required=False,
         label="Card expiry year",
         help_text="The expiry year for your card in 4-digit form",
-        min_value=lambda: timezone.now().year,
+        min_value=timezone.now().year,
     ))
     cvc = secure_striped(forms.CharField(
         required=False,
