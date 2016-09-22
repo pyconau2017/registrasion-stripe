@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from django.db import transaction
+from django.http import Http404
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 
