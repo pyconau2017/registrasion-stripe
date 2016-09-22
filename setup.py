@@ -2,7 +2,7 @@
 import os
 from setuptools import setup, find_packages
 
-import registrasion
+import registripe
 
 
 def read_file(filename):
@@ -15,13 +15,12 @@ def read_file(filename):
         return ''
 
 setup(
-    name="registrasion",
+    name="registrasion-stripe",
     author="Christopher Neugebauer",
     author_email="_@chrisjrn.com",
-    version=registrasion.__version__,
-    description="A registration app for the Symposion conference management "
-                "system.",
-    url="http://github.com/chrisjrn/registrasion/",
+    version=registripe.__version__,
+    description="Stripe-based payments for the Registrasion conference registration package.",
+    url="http://github.com/chrisjrn/registrasion-stripe/",
     packages=find_packages(),
     include_package_data=True,
     classifiers=(
@@ -32,6 +31,5 @@ setup(
         "Natural Language :: English",
         "License :: OSI Approved :: Apache Software License",
     ),
-    install_requires=read_file("requirements/base.txt").splitlines(),
-    dependency_links=read_file("requirements/dependencies.txt").splitlines(),
+    install_requires=read_file("requirements.txt").splitlines(),
 )
