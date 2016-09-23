@@ -39,12 +39,14 @@ def pubkey_script(request):
     return HttpResponse(script, content_type="text/javascript")
 
 
-def card(request, invoice_id):
+def card(request, invoice_id, access_code=None):
     ''' View that shows and processes a Stripe CreditCardForm to pay the given
     invoice. Redirects back to the invoice once the invoice is fully paid.
 
     Arguments:
         invoice_id (castable to str): The invoice id for the invoice to pay.
+        access_code (str): The optional access code for the invoice (for
+            unauthenticated payment)
 
     '''
 
@@ -52,10 +54,10 @@ def card(request, invoice_id):
 
     inv = InvoiceController.for_id_or_404(str(invoice_id))
 
-    if not inv.can_view(user=request.user):
+    if not inv.can_view(user=request.user, access_code=access_code):
         raise Http404()
 
-    to_invoice = redirect("invoice", inv.invoice.id)
+    to_invoice = redirect("invoice", inv.invoice.id, access_code)
 
     if inv.invoice.balance_due() <= 0:
         return to_invoice
@@ -92,13 +94,13 @@ def process_card(request, form, inv):
 
     conference = Conference.objects.get(id=CONFERENCE_ID)
     amount_to_pay = inv.invoice.balance_due()
-
+    user = inv.invoice.user
     token = form.cleaned_data["stripe_token"]
 
-    customer = actions.customers.get_customer_for_user(request.user)
+    customer = actions.customers.get_customer_for_user(user)
 
     if not customer:
-        customer = actions.customers.create(request.user)
+        customer = actions.customers.create(user)
 
     card = actions.sources.create_card(customer, token)
 
@@ -114,10 +116,8 @@ def process_card(request, form, inv):
         capture=True,
     )
 
-    receipt = charge.stripe_charge.receipt_number
-    if not receipt:
-        receipt = charge.stripe_charge.id
-    reference = "Paid with Stripe receipt number: " + receipt
+    receipt = charge.stripe_charge.id
+    reference = "Paid with Stripe reference: " + receipt
 
     # Create the payment object
     models.StripePayment.objects.create(
@@ -185,8 +185,9 @@ def process_refund(cn, form):
 
     refund = actions.refunds.create(charge, to_refund)
 
-    commerce.CreditNoteRefund.objects.create(
+    models.StripeCreditNoteRefund.objects.create(
         parent=cn.credit_note,
+        charge=charge,
         reference="Refunded %s to Stripe charge %s" % (
             to_refund, stripe_charge_id
         )

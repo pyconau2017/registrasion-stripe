@@ -8,3 +8,7 @@ from pinax.stripe.models import Charge
 class StripePayment(commerce.PaymentBase):
 
     charge = models.ForeignKey(Charge)
+
+class StripeCreditNoteRefund(commerce.CreditNoteRefund):
+
+    charge = models.ForeignKey(Charge)
