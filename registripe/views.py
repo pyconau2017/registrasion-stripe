@@ -57,7 +57,10 @@ def card(request, invoice_id, access_code=None):
     if not inv.can_view(user=request.user, access_code=access_code):
         raise Http404()
 
-    to_invoice = redirect("invoice", inv.invoice.id, access_code)
+    args = [inv.invoice.id]
+    if access_code:
+        args.append(access_code)
+    to_invoice = redirect("invoice", *args)
 
     if inv.invoice.balance_due() <= 0:
         return to_invoice
