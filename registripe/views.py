@@ -114,6 +114,7 @@ def process_card(request, form, inv):
     charge = actions.charges.create(
         amount_to_pay,
         customer,
+        source=card,
         currency=CURRENCY,
         description=description,
         capture=True,
