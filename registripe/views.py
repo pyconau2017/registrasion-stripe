@@ -1,5 +1,7 @@
-import forms
-import models
+from . import (
+    forms,
+    models,
+)
 
 from django.core.exceptions import ValidationError
 from django.conf import settings

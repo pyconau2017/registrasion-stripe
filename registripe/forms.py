@@ -1,5 +1,6 @@
 import copy
-import models
+
+from . import models
 
 from django import forms
 from django.core.urlresolvers import reverse
